@@ -169,6 +169,14 @@ public abstract class Chat<TOutgoingMessage> {
     }
 
     /**
+     * Method to cancel sending current message.
+     */
+    @NonNull
+    public Observable<?> observeCancelEvent(@NonNull final TOutgoingMessage message) {
+        return Observable.never();
+    }
+
+    /**
      * Deactivates chat so it will stop sending messages.
      */
     public void deactivate() {
@@ -194,6 +202,7 @@ public abstract class Chat<TOutgoingMessage> {
                                 .first()
                                 .switchMap(shouldSendMessage -> shouldSendMessage
                                         ? createSendMessageObservable(message).ignoreElements() : Observable.empty())
+                                .takeUntil(observeCancelEvent(message))
                                 .retryWhen(attempts -> attempts.switchMap(ignored -> {
                                     isSendingInError.onNext(true);
                                     return Observable
