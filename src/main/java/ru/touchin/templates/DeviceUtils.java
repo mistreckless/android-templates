@@ -19,7 +19,9 @@
 
 package ru.touchin.templates;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
@@ -27,13 +29,16 @@ import android.net.NetworkInfo;
 import android.net.wifi.WifiManager;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 
 import java.io.UnsupportedEncodingException;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import io.reactivex.Observable;
+import io.reactivex.ObservableEmitter;
 import ru.touchin.roboswag.core.log.Lc;
 import ru.touchin.roboswag.core.observables.RxAndroidUtils;
 
@@ -171,6 +176,42 @@ public final class DeviceUtils {
                 .distinctUntilChanged();
     }
 
+    /**
+     * Returns observable to observe is device connected to the internet.
+     *
+     * @param context Context to register BroadcastReceiver to check connection to the internet;
+     * @return Observable of internet connection status.
+     */
+    @NonNull
+    public static Observable<Boolean> observeIsNetworkConnected(@NonNull final Context context) {
+        return Observable.switchOnNext(Observable.fromCallable(() -> {
+            final NetworkStateReceiver networkStateReceiver = new NetworkStateReceiver();
+            return Observable
+                    .<Boolean>create(subscriber -> {
+                        subscriber.onNext(isNetworkConnected(context));
+                        networkStateReceiver.setEmitter(subscriber);
+                        context.registerReceiver(networkStateReceiver, NetworkStateReceiver.INTENT_FILTER);
+                    })
+                    .doOnDispose(() -> context.unregisterReceiver(networkStateReceiver))
+                    .onErrorReturnItem(false)
+                    .distinctUntilChanged();
+        }));
+    }
+
+    /**
+     * Create an Observable that depends on network connection
+     *
+     * @param processObservable - Observable to which we subscribe in the availability of the Internet
+     */
+    @NonNull
+    public static Observable<?> createNetworkDependentObservable(@NonNull final Context context, @NonNull final Observable<?> processObservable) {
+        return DeviceUtils.observeIsNetworkConnected(context)
+                .debounce(100, TimeUnit.MILLISECONDS)
+                .switchMap(connected -> !connected
+                        ? Observable.empty()
+                        : processObservable);
+    }
+
     private DeviceUtils() {
     }
 
@@ -218,6 +259,29 @@ public final class DeviceUtils {
             return name;
         }
 
+    }
+
+    private static class NetworkStateReceiver extends BroadcastReceiver {
+
+        private static final IntentFilter INTENT_FILTER = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
+        @Nullable
+        private ConnectivityManager connectivityManager;
+
+        @Nullable
+        private ObservableEmitter<? super Boolean> emitter;
+
+        public void setEmitter(@Nullable final ObservableEmitter<? super Boolean> emitter) {
+            this.emitter = emitter;
+        }
+
+        public void onReceive(@NonNull final Context context, @NonNull final Intent intent) {
+            if (connectivityManager == null) {
+                connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            }
+            if (emitter != null) {
+                emitter.onNext(isNetworkConnected(context));
+            }
+        }
     }
 
 }
