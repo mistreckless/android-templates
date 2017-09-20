@@ -199,9 +199,9 @@ public final class DeviceUtils {
     }
 
     /**
-     * Create an Observable that depends on network connection
+     * Create an Observable that depends on network connection.
      *
-     * @param processObservable - Observable to which we subscribe in the availability of the Internet
+     * @param processObservable - Observable to which we subscribe in the availability of the Internet;
      */
     @NonNull
     public static Observable<?> createNetworkDependentObservable(@NonNull final Context context, @NonNull final Observable<?> processObservable) {
