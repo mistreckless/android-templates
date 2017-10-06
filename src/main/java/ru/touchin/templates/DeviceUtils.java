@@ -220,11 +220,7 @@ public final class DeviceUtils {
      */
     @NonNull
     public static Observable<?> createNetworkDependentObservable(@NonNull final Context context, @NonNull final Completable processObservable) {
-        return DeviceUtils.observeIsNetworkConnected(context)
-                .debounce(100, TimeUnit.MILLISECONDS)
-                .switchMap(connected -> !connected
-                        ? Observable.empty()
-                        : processObservable.toObservable());
+        return createNetworkDependentObservable(context, processObservable.toObservable());
     }
 
     private DeviceUtils() {
