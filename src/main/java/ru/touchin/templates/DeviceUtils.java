@@ -37,6 +37,7 @@ import java.io.UnsupportedEncodingException;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import io.reactivex.Completable;
 import io.reactivex.Observable;
 import io.reactivex.ObservableEmitter;
 import ru.touchin.roboswag.core.log.Lc;
@@ -210,6 +211,20 @@ public final class DeviceUtils {
                 .switchMap(connected -> !connected
                         ? Observable.empty()
                         : processObservable);
+    }
+
+    /**
+     * Create an Observable that depends on network connection.
+     *
+     * @param processObservable - Observable to which we subscribe in the availability of the Internet;
+     */
+    @NonNull
+    public static Observable<?> createNetworkDependentObservable(@NonNull final Context context, @NonNull final Completable processObservable) {
+        return DeviceUtils.observeIsNetworkConnected(context)
+                .debounce(100, TimeUnit.MILLISECONDS)
+                .switchMap(connected -> !connected
+                        ? Observable.empty()
+                        : processObservable.toObservable());
     }
 
     private DeviceUtils() {
