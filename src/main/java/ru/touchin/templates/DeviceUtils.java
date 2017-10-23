@@ -189,9 +189,9 @@ public final class DeviceUtils {
             final NetworkStateReceiver networkStateReceiver = new NetworkStateReceiver();
             return Observable
                     .<Boolean>create(subscriber -> {
+                        context.registerReceiver(networkStateReceiver, NetworkStateReceiver.INTENT_FILTER);
                         subscriber.onNext(isNetworkConnected(context));
                         networkStateReceiver.setEmitter(subscriber);
-                        context.registerReceiver(networkStateReceiver, NetworkStateReceiver.INTENT_FILTER);
                     })
                     .doOnDispose(() -> context.unregisterReceiver(networkStateReceiver))
                     .onErrorReturnItem(false)
